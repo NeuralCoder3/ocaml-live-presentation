@@ -179,8 +179,6 @@ let scene _time (x,y) =
     (1.,0.,1.)
   else
     (x,y,0.)
-
-
   
 
 
@@ -197,12 +195,15 @@ let create width height st =
     *)
   (* let width = 200 in
   let height = 200 in *)
+  let scale = 2.0 in
+  let awidth = int_of_float (float_of_int width /. scale) in
+  let aheight = int_of_float (float_of_int height /. scale) in
   let render = 
-    Array.init height (fun y ->
-      let yf = float_of_int y /. float_of_int height in
+    Array.init aheight (fun y ->
+      let yf = float_of_int y /. float_of_int aheight in
       let yf = 1. -. yf in
-      Array.init width (fun x ->
-        let xf = float_of_int x /. float_of_int width in
+      Array.init awidth (fun x ->
+        let xf = float_of_int x /. float_of_int awidth in
         scene st (xf,yf)
         |> map_triple (fun a -> int_of_float (a *. 255.0))
       )
@@ -218,6 +219,8 @@ let create width height st =
         let channel = i mod 4 in
         let x = pos / width in
         let y = pos mod width in
+        let x = int_of_float (float_of_int x /. scale) in
+        let y = int_of_float (float_of_int y /. scale) in
         let (r,g,b) = render.(x).(y) in
         match channel with
         | 0 -> r
@@ -256,7 +259,8 @@ let img width height st =
 
 Slideshow.set_slides Slideshow.window ([
   (
-    let width,height = 512.,512. in
+    (* let width,height = 512.,512. in *)
+    let width,height = 800.,800. in
     let start = Sys.time () in
     (* move inside for animation *)
     let time = Sys.time () -. start in
@@ -265,7 +269,7 @@ Slideshow.set_slides Slideshow.window ([
      let rect =
        Path.make (fun ctx -> Path.rect ctx 0. 0. width height)
      in
-     let px,py = 200.,200. in
+     let px,py = 500.,200. in
      title "Transformation: translation" [
        Image.paint
          (Paint.transform
