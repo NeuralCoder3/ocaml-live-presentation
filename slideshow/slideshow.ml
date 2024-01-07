@@ -2,6 +2,11 @@
 open Tsdl
 open Tgles2
 
+(* let screen_width = 1024.0
+let screen_height = 768.0 *)
+let screen_width = 1920.0
+let screen_height = 1080.0
+
 let (>>=) x f = match x with
   | Ok a -> f a
   | Error x as result -> result
@@ -97,16 +102,16 @@ let render_slide t slide =
   Gl.disable Gl.depth_test;
   let width = float width and height = float height in
   let transform =
-    let r = 1024.0 /. 768.0 in
+    let r = screen_width /. screen_height in
     let r' = width /. height in
     let r =
       if r' > r then
-        (height /. 768.0)
+        (height /. screen_height)
       else
-        (width /. 1024.0)
+        (width /. screen_width)
     in
-    let x = (width -. 1024.0 *. r) /. 2.0 in
-    let y = (height -. 768.0 *. r) /. 2.0 in
+    let x = (width -. screen_width *. r) /. 2.0 in
+    let y = (height -. screen_height *. r) /. 2.0 in
     Wall.Transform.rescale r r
       (Wall.Transform.translation x y)
     (*Wall.Transform.translate ~x ~y (Wall.Transform.scale r r)*)
@@ -179,7 +184,7 @@ let destroy_window { win; gl; wall } =
   Sdl.destroy_window win
 
 let window =
-  get_result (make_window ~w:1024 ~h:768)
+  get_result (make_window ~w:(int_of_float screen_width) ~h:(int_of_float screen_height))
 
 let () = Hotlink.on_unload (fun () -> window.quit <- true)
 

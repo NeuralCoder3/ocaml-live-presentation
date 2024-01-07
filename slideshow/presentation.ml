@@ -8,12 +8,14 @@ let default_font ?(size=1.0) () =
   Font.make ~size:(64.0 *. size) font_sans
     ~placement:`Subpixel
 
+let banner_height = 128.0
 let title_banner = Path.make (fun ctx ->
-    Path.rect ctx ~x:0.0 ~y:0.0 ~w:1024.0 ~h:128.0
+    Path.rect ctx ~x:0.0 ~y:0.0 ~w:Slideshow.screen_width ~h:banner_height
   )
 
 let b2 x y w h = Gg.Box2.v (Gg.P2.v x y) (Gg.Size2.v w h)
-let body_box = b2 0.0 128.0 1024.0 640.0
+(* let body_box = b2 0.0 128.0 1024.0 640.0 *)
+let body_box = b2 0.0 banner_height Slideshow.screen_width (Slideshow.screen_height -. banner_height)
 
 let light_blue = Color.lerp_rgba 0.2 Color.white Color.blue
 let light_yellow = Color.v 1.0 1.0 0.0 1.0
@@ -132,10 +134,10 @@ let shape_slide =
       Path.rect ctx (-150.0) (-50.0) 100.0 100.0
     ) in
   let circle = Path.make (fun ctx ->
-      Path.circle ctx 100.0 0.0 100.0
+      Path.circle ctx 0.0 0.0 100.0
     ) in
   title "Shapes" [
-    Image.transform (Transform.translation 512.0 444.0)
+    Image.transform (Transform.translation 512.0 450.0)
       (Image.seq [ Image.fill square; Image.fill circle ]);
     code "Point = R * R\n\
           Shape ~= Point -> Bool"
@@ -151,7 +153,201 @@ let sample_path = Path.make (fun ctx ->
 ;;
 open Slideshow;;
 
+
+
+
+
+
+
+(* let modify stbimg =  *)
+  (* let data = stbimg.Stb_image.data in
+  { stbimg with Stb_image.data } *)
+
+  (* stbimg *)
+  (* {
+    stbimg with
+    data = 
+      let data = stbimg.data in
+      let data = Array.map (fun x -> x * 2) data in
+  } *)
+
+let scene _time (x,y) =
+  (* (x,y,0.) *)
+  if x <= 0.01 || x >= 0.99 || y <= 0.01 || y >= 0.99 then
+    (0.,0.,0.)
+  else if x < 0.1 || x > 0.9 || y < 0.1 || y>0.9 then
+    (1.,0.,1.)
+  else
+    (x,y,0.)
+
+
+  
+
+
+
+
+let map_triple f (x,y,z) =
+  (f x, f y, f z)
+(* https://github.com/let-def/stb_image/blob/master/stb_image.mli *)
+let create width height st =
+    (* int8 buffer 
+    int8 = (int, int8_unsigned_elt) kind 
+    'k buffer = ('a, 'b, c_layout) Array1.t
+    where 'k = ('a, 'b) kind 
+    *)
+  (* let width = 200 in
+  let height = 200 in *)
+  let render = 
+    Array.init height (fun y ->
+      let yf = float_of_int y /. float_of_int height in
+      let yf = 1. -. yf in
+      Array.init width (fun x ->
+        let xf = float_of_int x /. float_of_int width in
+        scene st (xf,yf)
+        |> map_triple (fun a -> int_of_float (a *. 255.0))
+      )
+    )
+  in
+  let buffer =
+    Bigarray.Array1.init
+      Bigarray.int8_unsigned
+      Bigarray.c_layout
+      (width * height * 4)
+      (fun i -> 
+        let pos = i / 4 in
+        let channel = i mod 4 in
+        let x = pos / width in
+        let y = pos mod width in
+        let (r,g,b) = render.(x).(y) in
+        match channel with
+        | 0 -> r
+        | 1 -> g
+        | 2 -> b
+        | 3 -> 255 (* alpha *)
+        | _ -> assert false
+      )
+  in
+  (* Stb_image.decode buffer *)
+  Stb_image.image ~width ~height ~channels:4
+    (* ~offset:0 ~stride:1 *)
+    buffer
+
+let img width height st =
+  let last = ref None in
+  fun t ->
+  match !last with
+    | Some (t', tex) when t == t' -> tex
+    | _ ->
+      let result = 
+        (* let img = Stb_image.load "nyan_cat.png" in *)
+        let img = create width height st in
+        match img with
+        | Result.Error (`Msg x) ->
+          Printf.ksprintf prerr_endline "loading nyan_cat: %s" x;
+          failwith "No image"
+        | Result.Ok img -> 
+          Printf.printf "created the image\n%!";
+          (* let img = modify img in *)
+          Wall.Texture.from_image t ~name:"render" img
+      in
+      last := Some (t, result);
+      result
+    ;;
+
 Slideshow.set_slides Slideshow.window ([
+  (
+    let width,height = 512.,512. in
+    let start = Sys.time () in
+    (* move inside for animation *)
+    let time = Sys.time () -. start in
+    let img = img (int_of_float width) (int_of_float height) time in
+    fun st ->
+     let rect =
+       Path.make (fun ctx -> Path.rect ctx 0. 0. width height)
+     in
+     let px,py = 200.,200. in
+     title "Transformation: translation" [
+       Image.paint
+         (Paint.transform
+            (Paint.image_pattern
+               (* (Gg.V2.v (-1146.0/.4.0) (-700.0/.4.0)) *)
+               (Gg.V2.v (0.0) (0.0))
+               (* (Gg.V2.v (1146.0 /. 2.0) (696.0 /. 2.0)) *)
+               (Gg.V2.v width height)
+               ~angle:0.0
+               ~alpha:1.0
+               (img st.wall))
+            (Transform.translation px py)
+         ) 
+        (Image.transform
+          (Transform.translation px py)
+                (Image.fill rect))
+     ]);
+
+  (fun _st ->
+     let rect =
+       Path.make (fun ctx -> Path.rect ctx (-200.0) (-200.0) 200.0 200.0)
+     in
+     title "Transformation: translation" [
+       Image.transform
+         (Transform.translation 512.0 444.0)
+              (Image.fill rect)
+        ;
+     ]);
+  (fun _st ->
+     let rect =
+       Path.make (fun ctx -> Path.rect ctx (-60.0) (-20.0) 120.0 40.0)
+     in
+     title "Transformation: translation" [
+       Image.transform
+         (Transform.translation 512.0 444.0)
+              (Image.fill rect)
+        ;
+     ]);
+  (fun _st ->
+     let rect =
+       Path.make (fun ctx -> Path.rect ctx (-60.0) (-20.0) 120.0 40.0)
+     in
+     title "Transformation: translation" [
+       Image.transform
+         (Transform.translation 512.0 444.0)
+            (Image.paint
+              (Paint.linear_gradient 0.0 0.0 30.0 30.0
+                light_yellow light_blue)
+              (Image.fill rect)
+            ) ;
+     ]);
+  (fun st ->
+    print_endline ("  " ^ string_of_float st.time);
+     let rect =
+       Path.make (fun ctx -> Path.rect ctx (-60.0) (-20.0) 120.0 40.0)
+     in
+     let sx = sin (st.time *. 2.0) *. 200.0 in
+     let sy = cos (st.time *. 3.0) *. 200.0 in
+     title "Transformation: translation" [
+       Image.transform
+         (Transform.translation 512.0 444.0)
+         (Image.transform
+            (Transform.translation sx sy)
+            (Image.paint
+              (Paint.linear_gradient 0.0 0.0 30.0 30.0
+                light_yellow light_blue)
+              (Image.fill rect)
+            )
+          );
+       code "Image.transform (translation %a %a) rect" pf sx pf sy;
+     ]);
+])
+;;
+
+
+
+
+
+
+
+
+(* Slideshow.set_slides Slideshow.window ([
   (fun _ -> title "The Wall library"
       [
         text ~halign:`CENTER ~x:512.0 ~y:250.0 "Frédéric Bour";
@@ -635,4 +831,4 @@ Slideshow.set_slides Slideshow.window ([
   )
 ;;
 
-let () = print_endline "foo"
+let () = print_endline "foo" *)

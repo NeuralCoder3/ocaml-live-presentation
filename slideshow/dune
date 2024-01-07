@@ -1,3 +1,10 @@
 (library
   (name presentation)
   (libraries lwt lwt.unix tsdl tgls.tgles2 wall hotcaml.hotlink))
+
+
+; do not abort at warnings
+(env
+  (dev
+  (flags (:standard -warn-error -A)))
+)

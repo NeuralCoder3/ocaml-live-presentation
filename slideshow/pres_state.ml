@@ -1,11 +1,13 @@
 open Wall
 
 let background =
-  Paint.linear_gradient ~sx:0.0 ~sy:0.0 ~ex:1024.0 ~ey:0.0
+  (* Paint.linear_gradient ~sx:0.0 ~sy:0.0 ~ex:1024.0 ~ey:0.0 *)
+  Paint.linear_gradient ~sx:0.0 ~sy:0.0 ~ex:1920.0 ~ey:0.0
      ~inner:Color.white ~outer:(Color.with_a Color.blue 0.5)
 
 let mediabox = Path.make @@ fun t ->
-  Path.rect t ~x:0.0 ~y:0.0 ~w:1024.0 ~h:768.0
+  (* Path.rect t ~x:0.0 ~y:0.0 ~w:1024.0 ~h:768.0 *)
+  Path.rect t ~x:0.0 ~y:0.0 ~w:1920.0 ~h:1080.0
 
 let load_font name =
   let ic = open_in_bin name in
